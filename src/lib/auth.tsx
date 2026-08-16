@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
-import { api, ApiError, type AdminRole } from '@/lib/api'
+import { api, ApiError, type AdminRole, type SignupRequest } from '@/lib/api'
 import { decodeToken, isExpired } from '@/lib/jwt'
 
 const STORAGE_KEY = 'admin_token'
@@ -14,7 +14,14 @@ interface AuthedUser {
 interface AuthContextValue {
   user: AuthedUser | null
   login: (email: string, password: string) => Promise<void>
+  signup: (request: SignupRequest) => Promise<void>
   logout: () => void
+}
+
+function storeToken(token: string): AuthedUser {
+  const claims = decodeToken(token)
+  localStorage.setItem(STORAGE_KEY, token)
+  return { token, email: claims.email, role: claims.role, businessId: claims.business_id }
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -43,9 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       async login(email, password) {
         const { access_token: token } = await api.login(email, password)
-        const claims = decodeToken(token)
-        localStorage.setItem(STORAGE_KEY, token)
-        setUser({ token, email: claims.email, role: claims.role, businessId: claims.business_id })
+        setUser(storeToken(token))
+      },
+      async signup(request) {
+        const { access_token: token } = await api.signup(request)
+        setUser(storeToken(token))
       },
       logout() {
         localStorage.removeItem(STORAGE_KEY)

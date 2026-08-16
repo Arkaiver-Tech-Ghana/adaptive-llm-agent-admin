@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -64,6 +64,12 @@ export function LoginPage() {
             <Button type="submit" disabled={busy} className="mt-2">
               {busy ? 'Signing in…' : 'Sign in'}
             </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              New here?{' '}
+              <Link to="/signup" className="text-foreground underline underline-offset-4">
+                Create a Business
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>

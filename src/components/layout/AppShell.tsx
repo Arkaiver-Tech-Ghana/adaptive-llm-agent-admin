@@ -1,68 +1,46 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { useState } from 'react'
+import { Outlet } from 'react-router-dom'
+import { MenuIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { SidebarNav } from '@/components/layout/SidebarNav'
 import { useAuth } from '@/lib/auth'
-import { dataRowKindFor } from '@/lib/business'
-import { cn } from '@/lib/utils'
 
-function navLinkClass({ isActive }: { isActive: boolean }) {
-  return cn(
-    'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-    isActive ? 'bg-secondary text-secondary-foreground' : 'text-muted-foreground hover:text-foreground',
-  )
-}
-
+// Vertical sidebar, always — desktop gets a fixed sidebar, mobile gets a
+// Sheet drawer holding the exact same SidebarNav content. Nav items, user
+// info, and logout live in that sidebar in both cases; the mobile top bar
+// is a bare hamburger trigger, nothing else — never a second place to put
+// nav content.
 export function AppShell() {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   if (!user) return null
 
-  const dataRowKind = dataRowKindFor(user.businessId)
-
   return (
-    <div className="flex min-h-svh flex-col">
-      <header className="flex items-center justify-between border-b px-6 py-3">
-        <div className="flex items-center gap-6">
-          <span className="font-semibold">Business Admin</span>
-          <nav className="flex items-center gap-1">
-            {user.role === 'owner' && (
-              <NavLink to="/config" className={navLinkClass}>
-                Config
-              </NavLink>
-            )}
-            {dataRowKind === 'menu-items' && (
-              <NavLink to="/menu-items" className={navLinkClass}>
-                Menu Items
-              </NavLink>
-            )}
-            {dataRowKind === 'rooms' && (
-              <NavLink to="/rooms" className={navLinkClass}>
-                Rooms
-              </NavLink>
-            )}
-            {user.role === 'owner' && (
-              <NavLink to="/staff" className={navLinkClass}>
-                Staff
-              </NavLink>
-            )}
-            {(user.role === 'owner' || user.role === 'platform_operator') && (
-              <NavLink to="/audit-log" className={navLinkClass}>
-                Audit Log
-              </NavLink>
-            )}
-          </nav>
+    <div className="flex min-h-svh">
+      <aside className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar p-4 text-sidebar-foreground md:flex">
+        <SidebarNav />
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-center border-b px-4 py-2.5 md:hidden">
+          <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label="Open navigation">
+                <MenuIcon />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left">
+              <SheetTitle className="sr-only">Navigation</SheetTitle>
+              <SidebarNav onNavigate={() => setMobileNavOpen(false)} />
+            </SheetContent>
+          </Sheet>
         </div>
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <span>
-            {user.email} · {user.role}
-            {user.businessId ? ` · ${user.businessId}` : ''}
-          </span>
-          <Button variant="outline" size="sm" onClick={logout}>
-            Log out
-          </Button>
-        </div>
-      </header>
-      <main className="flex-1 p-6">
-        <Outlet />
-      </main>
+
+        <main className="flex-1 p-6">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }
