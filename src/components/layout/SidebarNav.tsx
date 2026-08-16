@@ -1,5 +1,14 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 
@@ -19,6 +28,7 @@ function navLinkClass({ isActive }: { isActive: boolean }) {
 // top bar, on any breakpoint.
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { user, logout } = useAuth()
+  const [confirmingLogout, setConfirmingLogout] = useState(false)
   if (!user) return null
 
   return (
@@ -48,10 +58,34 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           {user.email}
           {user.businessId ? ` · ${user.businessId}` : ''}
         </span>
-        <Button variant="outline" size="sm" onClick={logout}>
+        <Button variant="outline" size="sm" onClick={() => setConfirmingLogout(true)}>
           Log out
         </Button>
       </div>
+
+      <Dialog open={confirmingLogout} onOpenChange={setConfirmingLogout}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Log out?</DialogTitle>
+            <DialogDescription>You'll need to sign in again to get back in.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmingLogout(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setConfirmingLogout(false)
+                onNavigate?.()
+                logout()
+              }}
+            >
+              Log out
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
