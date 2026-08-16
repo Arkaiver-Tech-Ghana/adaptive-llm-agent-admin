@@ -70,7 +70,7 @@ export interface BusinessConfig {
     tone: string | null
     out_of_scope_response: string | null
   }
-  tools: { name: string; description: string; requires_confirmation: boolean }[]
+  tools: { name: string; description: string; requires_confirmation: boolean; enabled: boolean }[]
   rails: { input_enabled: boolean; output_enabled: boolean; scope_description: string | null }
 }
 
