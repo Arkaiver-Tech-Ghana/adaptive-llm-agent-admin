@@ -23,13 +23,15 @@ import { useAuth } from '@/lib/auth'
 import type { ConfirmationRequired, DeleteResult } from '@/lib/api'
 
 // Generic CRUD table over a "data row" resource keyed by a unique string
-// field (menu items by name, rooms by name — issue #17's "data-row CRUD"
-// pattern, proven identical across both Businesses). Parameterized by
-// column config + API calls rather than duplicated per resource.
+// field. Originally proven on the old fixed menu-items/rooms endpoints;
+// now the engine behind DatabasePage.tsx's owner-defined Custom Tables,
+// driven by a TableDef's dynamic columns instead of a hardcoded array.
+// Parameterized by column config + API calls rather than duplicated per
+// resource/table.
 export interface EntityColumn<T> {
   key: keyof T
   label: string
-  type: 'text' | 'number'
+  type: 'text' | 'number' | 'boolean'
   step?: string
 }
 
@@ -140,7 +142,9 @@ export function EntityCrudPage<T extends object>({
           {items.map((item) => (
             <TableRow key={String(item[idKey])}>
               {columns.map((col) => (
-                <TableCell key={String(col.key)}>{String(item[col.key])}</TableCell>
+                <TableCell key={String(col.key)}>
+                  {col.type === 'boolean' ? (item[col.key] ? 'Yes' : 'No') : String(item[col.key])}
+                </TableCell>
               ))}
               <TableCell className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => openEdit(item)}>
@@ -237,25 +241,38 @@ function EntityFormDialog<T extends object>({
             onSubmit()
           }}
         >
-          {columns.map((col) => (
-            <div key={String(col.key)} className="flex flex-col gap-1.5">
-              <Label htmlFor={String(col.key)}>{col.label}</Label>
-              <Input
-                id={String(col.key)}
-                type={col.type}
-                step={col.step}
-                disabled={col.key === idKey && !idEditable}
-                value={String(draft[col.key] ?? '')}
-                onChange={(e) =>
-                  setDraft({
-                    ...draft,
-                    [col.key]: col.type === 'number' ? Number(e.target.value) : e.target.value,
-                  } as T)
-                }
-                required
-              />
-            </div>
-          ))}
+          {columns.map((col) =>
+            col.type === 'boolean' ? (
+              <label key={String(col.key)} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4 rounded border-input"
+                  disabled={col.key === idKey && !idEditable}
+                  checked={Boolean(draft[col.key])}
+                  onChange={(e) => setDraft({ ...draft, [col.key]: e.target.checked } as T)}
+                />
+                {col.label}
+              </label>
+            ) : (
+              <div key={String(col.key)} className="flex flex-col gap-1.5">
+                <Label htmlFor={String(col.key)}>{col.label}</Label>
+                <Input
+                  id={String(col.key)}
+                  type={col.type}
+                  step={col.step}
+                  disabled={col.key === idKey && !idEditable}
+                  value={String(draft[col.key] ?? '')}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      [col.key]: col.type === 'number' ? Number(e.target.value) : e.target.value,
+                    } as T)
+                  }
+                  required
+                />
+              </div>
+            ),
+          )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

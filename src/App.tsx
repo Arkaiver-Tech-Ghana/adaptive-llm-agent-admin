@@ -5,6 +5,8 @@ import { HomePage } from '@/pages/HomePage'
 import { LoginPage } from '@/pages/LoginPage'
 import { SignupPage } from '@/pages/SignupPage'
 import { ConfigPage } from '@/pages/ConfigPage'
+import { DatabasePage } from '@/pages/DatabasePage'
+import { DatabaseTablePage } from '@/pages/DatabaseTablePage'
 import { AuditLogPage } from '@/pages/AuditLogPage'
 
 function App() {
@@ -18,6 +20,8 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route element={<ProtectedRoute allow={['owner']} />}>
               <Route path="/config" element={<ConfigPage />} />
+              <Route path="/database" element={<DatabasePage />} />
+              <Route path="/database/:tableName" element={<DatabaseTablePage />} />
             </Route>
             <Route element={<ProtectedRoute allow={['owner', 'platform_operator']} />}>
               <Route path="/audit-log" element={<AuditLogPage />} />

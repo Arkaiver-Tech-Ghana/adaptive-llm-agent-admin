@@ -74,6 +74,26 @@ export interface BusinessConfig {
   rails: { input_enabled: boolean; output_enabled: boolean; scope_description: string | null }
 }
 
+export type ColumnType = 'text' | 'number' | 'boolean'
+
+export interface ColumnDef {
+  name: string
+  type: ColumnType
+  required: boolean
+}
+
+export interface TableDef {
+  table_name: string
+  display_name: string
+  columns: ColumnDef[]
+  tool_linked: string | null
+}
+
+// A row's shape is whatever its TableDef's columns say — "id" plus one
+// key per column. Not statically typed per-table since tables are
+// owner-defined at runtime, not known at build time.
+export type EntityRow = Record<string, unknown> & { id: string }
+
 export interface AuditLogEntry {
   id: number
   actor_email: string
@@ -114,6 +134,52 @@ export const api = {
 
   getAuditLog: (token: string, businessId: string) =>
     request<AuditLogEntry[]>(`/admin/api/v1/businesses/${businessId}/audit-log`, { token }),
+
+  listTables: (token: string, businessId: string) =>
+    request<TableDef[]>(`/admin/api/v1/businesses/${businessId}/tables`, { token }),
+
+  createTable: (token: string, businessId: string, tableDef: TableDef) =>
+    request<TableDef>(`/admin/api/v1/businesses/${businessId}/tables`, {
+      method: 'POST',
+      token,
+      body: tableDef,
+    }),
+
+  deleteTable: (token: string, businessId: string, tableName: string, confirmToken?: string) =>
+    request<ConfirmationRequired | DeleteResult>(
+      `/admin/api/v1/businesses/${businessId}/tables/${encodeURIComponent(tableName)}`,
+      { method: 'DELETE', token, params: confirmToken ? { confirm_token: confirmToken } : undefined },
+    ),
+
+  listRows: (token: string, businessId: string, tableName: string) =>
+    request<EntityRow[]>(
+      `/admin/api/v1/businesses/${businessId}/tables/${encodeURIComponent(tableName)}/rows`,
+      { token },
+    ),
+
+  createRow: (token: string, businessId: string, tableName: string, row: Record<string, unknown>) =>
+    request<EntityRow>(
+      `/admin/api/v1/businesses/${businessId}/tables/${encodeURIComponent(tableName)}/rows`,
+      { method: 'POST', token, body: row },
+    ),
+
+  updateRow: (
+    token: string,
+    businessId: string,
+    tableName: string,
+    rowId: string,
+    patch: Record<string, unknown>,
+  ) =>
+    request<EntityRow>(
+      `/admin/api/v1/businesses/${businessId}/tables/${encodeURIComponent(tableName)}/rows/${encodeURIComponent(rowId)}`,
+      { method: 'PATCH', token, body: patch },
+    ),
+
+  deleteRow: (token: string, businessId: string, tableName: string, rowId: string, confirmToken?: string) =>
+    request<ConfirmationRequired | DeleteResult>(
+      `/admin/api/v1/businesses/${businessId}/tables/${encodeURIComponent(tableName)}/rows/${encodeURIComponent(rowId)}`,
+      { method: 'DELETE', token, params: confirmToken ? { confirm_token: confirmToken } : undefined },
+    ),
 }
 
 export function isConfirmationRequired(
