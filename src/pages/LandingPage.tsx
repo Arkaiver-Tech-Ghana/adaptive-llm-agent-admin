@@ -39,6 +39,86 @@ import { useAuth } from '@/lib/auth'
 
 const ACCENT = '#4F46E5'
 
+/* ------------------------------------------------------------ Chat mockup */
+
+/**
+ * Stand-in for the real hero footage: a WhatsApp thread where the agent takes
+ * an order end to end. Ported from the component-based landing spike on
+ * feature/landing-page and resized for the 292x519 frame.
+ *
+ * This is the one place the page palette does not apply — it is standing in
+ * for a screenshot, so it wears WhatsApp's colors, not Qantonic's.
+ */
+const CHAT = [
+  { from: 'customer', text: 'Hey, are you open right now?' },
+  {
+    from: 'bot',
+    text: "We're open 24/7! Our Jollof Rice Combo is ₵45 — want me to add it to your order?",
+  },
+  { from: 'customer', text: 'Yes, add it. Any drinks?' },
+  { from: 'bot', text: "We've got Chapman, Zobo, or Coke — ₵10 each." },
+  { from: 'customer', text: "Zobo please, and I'll pay on delivery" },
+  {
+    from: 'bot',
+    text: 'Order confirmed — Jollof Combo + Zobo, ₵55 total, cash on delivery. On its way in 20 mins!',
+  },
+] as const
+
+function ChatMockup() {
+  return (
+    <div className="flex h-full w-full flex-col bg-[#E5DDD5]">
+      {/* Thread header */}
+      <div className="flex shrink-0 items-center gap-2.5 bg-[#075E54] px-3 py-2.5 text-white">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-white/15 text-[11px] font-semibold">
+          KC
+        </span>
+        <div className="flex min-w-0 flex-col leading-tight">
+          <span className="truncate text-[13px] font-semibold">KampusCrave</span>
+          <span className="text-[10px] text-white/70">online — your agent, replying live</span>
+        </div>
+      </div>
+
+      {/* Messages sit at the bottom so the payoff line is always in frame and
+          the thread reads as one already in progress. */}
+      <div className="flex flex-1 flex-col justify-end gap-2 overflow-hidden px-2.5 py-3">
+        <div className="flex justify-center pb-1">
+          <span className="rounded-md bg-white/70 px-2 py-0.5 text-[9px] font-semibold tracking-wide text-neutral-600 uppercase">
+            Today
+          </span>
+        </div>
+
+        {CHAT.map((message, i) => {
+          const isCustomer = message.from === 'customer'
+          return (
+            <div key={i} className={`flex ${isCustomer ? 'justify-end' : 'justify-start'}`}>
+              <div
+                className={`max-w-[82%] rounded-lg px-2.5 py-1.5 text-[12px] leading-[1.4] text-neutral-900 shadow-sm ${
+                  isCustomer ? 'bg-[#DCF8C6]' : 'bg-white'
+                }`}
+              >
+                {message.text}
+                {isCustomer && (
+                  <span className="ml-1 align-middle text-[9px] text-[#53BDEB]">✓✓</span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Typing indicator — the agent is mid-reply, so the thread reads live
+            rather than as a finished transcript. */}
+        <div className="flex justify-start">
+          <div className="flex items-center gap-1 rounded-lg bg-white px-2.5 py-2 shadow-sm">
+            <span className="size-1.5 rounded-full bg-neutral-400" />
+            <span className="size-1.5 rounded-full bg-neutral-300" />
+            <span className="size-1.5 rounded-full bg-neutral-200" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ---------------------------------------------------------------- HeroMedia */
 
 type HeroMediaProps = {
@@ -94,8 +174,9 @@ function HeroMedia({
           ) : stillImage ? (
             <img className="h-full w-full object-cover" src={stillImage} alt={alt} />
           ) : (
-            /* Solid placeholder until real media is dropped in. */
-            <div className="h-full w-full bg-[#E4E4E7]" role="img" aria-label={alt} />
+            /* Last resort: the chat mockup, so the frame always shows the
+               product doing its job rather than an empty grey box. */
+            <ChatMockup />
           )}
         </div>
       </div>
