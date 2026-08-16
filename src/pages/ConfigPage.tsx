@@ -33,7 +33,6 @@ export function ConfigPage() {
     try {
       const updated = await api.patchConfig(token, businessId, {
         display_name: config.display_name,
-        enabled: config.enabled,
         llm: { provider: config.llm.provider, model: config.llm.model },
         business_logic: {
           persona: config.business_logic.persona,
@@ -54,7 +53,7 @@ export function ConfigPage() {
   if (!config) return <p className="text-muted-foreground">Loading…</p>
 
   return (
-    <div className="flex max-w-2xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Business Config</h1>
         <Button onClick={save} disabled={saving}>
@@ -62,50 +61,52 @@ export function ConfigPage() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">General</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <Field label="Display name" value={config.display_name}
-            onChange={(v) => setConfig({ ...config, display_name: v })} />
-          <Field label="LLM provider" value={config.llm.provider}
-            onChange={(v) => setConfig({ ...config, llm: { ...config.llm, provider: v } })} />
-          <Field label="LLM model" value={config.llm.model}
-            onChange={(v) => setConfig({ ...config, llm: { ...config.llm, model: v } })} />
-        </CardContent>
-      </Card>
+      <div className="flex max-w-2xl flex-col gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">General</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <Field label="Display name" value={config.display_name}
+              onChange={(v) => setConfig({ ...config, display_name: v })} />
+            <Field label="LLM provider" value={config.llm.provider}
+              onChange={(v) => setConfig({ ...config, llm: { ...config.llm, provider: v } })} />
+            <Field label="LLM model" value={config.llm.model}
+              onChange={(v) => setConfig({ ...config, llm: { ...config.llm, model: v } })} />
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Persona &amp; scope</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <TextField label="Persona" value={config.business_logic.persona}
-            onChange={(v) => setConfig({ ...config, business_logic: { ...config.business_logic, persona: v } })} />
-          <TextField label="Scope instructions" value={config.business_logic.scope_instructions}
-            onChange={(v) => setConfig({ ...config, business_logic: { ...config.business_logic, scope_instructions: v } })} />
-          <Field label="Tone" value={config.business_logic.tone ?? ''}
-            onChange={(v) => setConfig({ ...config, business_logic: { ...config.business_logic, tone: v || null } })} />
-          <TextField label="Out-of-scope response" value={config.business_logic.out_of_scope_response ?? ''}
-            onChange={(v) => setConfig({ ...config, business_logic: { ...config.business_logic, out_of_scope_response: v || null } })} />
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Persona &amp; scope</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <TextField label="Persona" value={config.business_logic.persona}
+              onChange={(v) => setConfig({ ...config, business_logic: { ...config.business_logic, persona: v } })} />
+            <TextField label="Scope instructions" value={config.business_logic.scope_instructions}
+              onChange={(v) => setConfig({ ...config, business_logic: { ...config.business_logic, scope_instructions: v } })} />
+            <Field label="Tone" value={config.business_logic.tone ?? ''}
+              onChange={(v) => setConfig({ ...config, business_logic: { ...config.business_logic, tone: v || null } })} />
+            <TextField label="Out-of-scope response" value={config.business_logic.out_of_scope_response ?? ''}
+              onChange={(v) => setConfig({ ...config, business_logic: { ...config.business_logic, out_of_scope_response: v || null } })} />
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Tools (read-only)</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {config.tools.length === 0 && <p className="text-sm text-muted-foreground">No tools configured.</p>}
-          {config.tools.map((t) => (
-            <Badge key={t.name} variant="secondary">
-              {t.name}
-              {t.requires_confirmation ? ' (confirm)' : ''}
-            </Badge>
-          ))}
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tools (read-only)</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {config.tools.length === 0 && <p className="text-sm text-muted-foreground">No tools configured.</p>}
+            {config.tools.map((t) => (
+              <Badge key={t.name} variant="secondary">
+                {t.name}
+                {t.requires_confirmation ? ' (confirm)' : ''}
+              </Badge>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
