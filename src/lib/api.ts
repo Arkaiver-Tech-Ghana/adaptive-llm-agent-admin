@@ -155,6 +155,30 @@ export const api = {
       { method: 'DELETE', token, params: confirmToken ? { confirm_token: confirmToken } : undefined },
     ),
 
+  addColumn: (token: string, businessId: string, tableName: string, column: ColumnDef) =>
+    request<TableDef>(
+      `/admin/api/v1/businesses/${businessId}/tables/${encodeURIComponent(tableName)}/columns`,
+      { method: 'POST', token, body: column },
+    ),
+
+  renameColumn: (token: string, businessId: string, tableName: string, columnName: string, newName: string) =>
+    request<TableDef>(
+      `/admin/api/v1/businesses/${businessId}/tables/${encodeURIComponent(tableName)}/columns/${encodeURIComponent(columnName)}`,
+      { method: 'PATCH', token, body: { name: newName } },
+    ),
+
+  deleteColumn: (
+    token: string,
+    businessId: string,
+    tableName: string,
+    columnName: string,
+    confirmToken?: string,
+  ) =>
+    request<ConfirmationRequired | DeleteResult>(
+      `/admin/api/v1/businesses/${businessId}/tables/${encodeURIComponent(tableName)}/columns/${encodeURIComponent(columnName)}`,
+      { method: 'DELETE', token, params: confirmToken ? { confirm_token: confirmToken } : undefined },
+    ),
+
   listRows: (token: string, businessId: string, tableName: string) =>
     request<EntityRow[]>(
       `/admin/api/v1/businesses/${businessId}/tables/${encodeURIComponent(tableName)}/rows`,
