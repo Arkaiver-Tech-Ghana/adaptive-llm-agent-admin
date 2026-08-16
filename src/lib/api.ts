@@ -44,11 +44,18 @@ async function request<T>(
   return response.json() as Promise<T>
 }
 
-export type AdminRole = 'owner' | 'staff' | 'platform_operator'
+export type AdminRole = 'owner' | 'platform_operator'
 
 export interface LoginResponse {
   access_token: string
   token_type: string
+}
+
+export interface SignupRequest {
+  business_id: string
+  display_name: string
+  owner_email: string
+  owner_password: string
 }
 
 export interface BusinessConfig {
@@ -65,26 +72,6 @@ export interface BusinessConfig {
   }
   tools: { name: string; description: string; requires_confirmation: boolean }[]
   rails: { input_enabled: boolean; output_enabled: boolean; scope_description: string | null }
-}
-
-export interface MenuItem {
-  name: string
-  category: string
-  price: number
-  stock_quantity: number
-}
-
-export interface Room {
-  name: string
-  room_type: string
-  price_per_night: number
-  availability_count: number
-}
-
-export interface StaffUser {
-  email: string
-  role: AdminRole
-  business_id: string | null
 }
 
 export interface AuditLogEntry {
@@ -112,6 +99,9 @@ export const api = {
   login: (email: string, password: string) =>
     request<LoginResponse>('/admin/api/v1/auth/login', { method: 'POST', body: { email, password } }),
 
+  signup: (body: SignupRequest) =>
+    request<LoginResponse>('/admin/api/v1/auth/signup', { method: 'POST', body }),
+
   getConfig: (token: string, businessId: string) =>
     request<BusinessConfig>(`/admin/api/v1/businesses/${businessId}/config`, { token }),
 
@@ -121,64 +111,6 @@ export const api = {
       token,
       body: patch,
     }),
-
-  listMenuItems: (token: string, businessId: string) =>
-    request<MenuItem[]>(`/admin/api/v1/businesses/${businessId}/menu-items`, { token }),
-
-  createMenuItem: (token: string, businessId: string, item: MenuItem) =>
-    request<MenuItem>(`/admin/api/v1/businesses/${businessId}/menu-items`, {
-      method: 'POST',
-      token,
-      body: item,
-    }),
-
-  updateMenuItem: (token: string, businessId: string, name: string, patch: Partial<MenuItem>) =>
-    request<MenuItem>(`/admin/api/v1/businesses/${businessId}/menu-items/${encodeURIComponent(name)}`, {
-      method: 'PATCH',
-      token,
-      body: patch,
-    }),
-
-  deleteMenuItem: (token: string, businessId: string, name: string, confirmToken?: string) =>
-    request<ConfirmationRequired | DeleteResult>(
-      `/admin/api/v1/businesses/${businessId}/menu-items/${encodeURIComponent(name)}`,
-      { method: 'DELETE', token, params: confirmToken ? { confirm_token: confirmToken } : undefined },
-    ),
-
-  listRooms: (token: string, businessId: string) =>
-    request<Room[]>(`/admin/api/v1/businesses/${businessId}/rooms`, { token }),
-
-  createRoom: (token: string, businessId: string, room: Room) =>
-    request<Room>(`/admin/api/v1/businesses/${businessId}/rooms`, { method: 'POST', token, body: room }),
-
-  updateRoom: (token: string, businessId: string, name: string, patch: Partial<Room>) =>
-    request<Room>(`/admin/api/v1/businesses/${businessId}/rooms/${encodeURIComponent(name)}`, {
-      method: 'PATCH',
-      token,
-      body: patch,
-    }),
-
-  deleteRoom: (token: string, businessId: string, name: string, confirmToken?: string) =>
-    request<ConfirmationRequired | DeleteResult>(
-      `/admin/api/v1/businesses/${businessId}/rooms/${encodeURIComponent(name)}`,
-      { method: 'DELETE', token, params: confirmToken ? { confirm_token: confirmToken } : undefined },
-    ),
-
-  listStaff: (token: string, businessId: string) =>
-    request<StaffUser[]>(`/admin/api/v1/businesses/${businessId}/staff`, { token }),
-
-  createStaff: (token: string, businessId: string, email: string, password: string) =>
-    request<StaffUser>(`/admin/api/v1/businesses/${businessId}/staff`, {
-      method: 'POST',
-      token,
-      body: { email, password },
-    }),
-
-  deleteStaff: (token: string, businessId: string, email: string, confirmToken?: string) =>
-    request<ConfirmationRequired | DeleteResult>(
-      `/admin/api/v1/businesses/${businessId}/staff/${encodeURIComponent(email)}`,
-      { method: 'DELETE', token, params: confirmToken ? { confirm_token: confirmToken } : undefined },
-    ),
 
   getAuditLog: (token: string, businessId: string) =>
     request<AuditLogEntry[]>(`/admin/api/v1/businesses/${businessId}/audit-log`, { token }),
