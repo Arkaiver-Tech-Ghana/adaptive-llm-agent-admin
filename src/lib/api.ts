@@ -82,17 +82,21 @@ export interface ColumnDef {
   required: boolean
 }
 
+export type IdType = 'uuid' | 'auto_increment'
+
 export interface TableDef {
   table_name: string
   display_name: string
   columns: ColumnDef[]
+  id_type: IdType
   tool_linked: string | null
 }
 
 // A row's shape is whatever its TableDef's columns say — "id" plus one
 // key per column. Not statically typed per-table since tables are
-// owner-defined at runtime, not known at build time.
-export type EntityRow = Record<string, unknown> & { id: string }
+// owner-defined at runtime, not known at build time. `id` is a number for
+// an auto_increment table, a uuid string otherwise.
+export type EntityRow = Record<string, unknown> & { id: string | number }
 
 export interface AuditLogEntry {
   id: number
