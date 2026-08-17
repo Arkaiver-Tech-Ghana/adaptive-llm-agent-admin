@@ -30,11 +30,22 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center p-6">
+    <div className="flex min-h-svh flex-col items-center justify-center gap-6 p-6">
+      <span className="flex items-center gap-2">
+        <span
+          aria-hidden
+          className="flex size-7 items-center justify-center rounded-md bg-primary font-heading text-sm font-semibold text-primary-foreground"
+        >
+          Q
+        </span>
+        <span className="font-heading text-lg font-semibold tracking-tight">Qantonic</span>
+      </span>
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Business Admin</CardTitle>
-          <CardDescription>Sign in to manage your Business.</CardDescription>
+          <CardTitle>Sign in</CardTitle>
+          <CardDescription>
+            Manage your assistant, your data, and everything it's allowed to do.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="flex flex-col gap-4">

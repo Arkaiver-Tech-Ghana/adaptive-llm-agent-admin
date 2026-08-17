@@ -1,14 +1,23 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { CheckIcon, PlusIcon, XIcon } from 'lucide-react'
+import { CheckIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { useAuth } from '@/lib/auth'
+import { humanize } from '@/lib/format'
 import { api, ApiError, type ColumnType, type TableDef } from '@/lib/api'
 
 const TYPE_LABEL: Record<ColumnType, string> = { text: 'Text', number: 'Number', boolean: 'Yes/No' }
@@ -48,6 +57,7 @@ export function ManageColumnsDialog({ open, onOpenChange, table, onChanged }: Ma
         delete next[columnName]
         return next
       })
+      toast.success('Column renamed')
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Something went wrong. Try again.')
     } finally {
@@ -78,64 +88,85 @@ export function ManageColumnsDialog({ open, onOpenChange, table, onChanged }: Ma
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Manage columns</DialogTitle>
+          <DialogTitle>Columns in {table.display_name}</DialogTitle>
+          <DialogDescription>
+            Each column is one fact you keep about a {table.display_name.toLowerCase()} — a price, a
+            name, whether it's available. Changes apply to every row at once.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           {table.columns.length === 0 && (
-            <p className="text-sm text-muted-foreground">No columns yet — add one below.</p>
+            <p className="rounded-lg border border-dashed px-3 py-6 text-center text-sm text-muted-foreground">
+              No columns yet — add the first one below.
+            </p>
           )}
-          {table.columns.map((col) => (
-            <div key={col.name} className="flex items-center gap-2">
-              <Input
-                value={renameDrafts[col.name] ?? col.name}
-                onChange={(e) => setRenameDrafts((prev) => ({ ...prev, [col.name]: e.target.value }))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') rename(col.name)
-                }}
-                className="flex-1"
-              />
-              <Badge variant="secondary">
-                {TYPE_LABEL[col.type]}
-                {col.required ? ', required' : ''}
-              </Badge>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                disabled={busy || (renameDrafts[col.name] ?? col.name).trim() === col.name}
-                onClick={() => rename(col.name)}
-                aria-label={`Save ${col.name}`}
-              >
-                <CheckIcon />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                disabled={busy}
-                onClick={() => setDeletingColumn(col.name)}
-                aria-label={`Delete ${col.name}`}
-              >
-                <XIcon />
-              </Button>
-            </div>
-          ))}
+          {table.columns.map((col) => {
+            const draft = renameDrafts[col.name] ?? col.name
+            const renamed = draft.trim() !== col.name && draft.trim() !== ''
+            return (
+              <div key={col.name} className="flex items-center gap-2">
+                <Input
+                  value={draft}
+                  onChange={(e) => setRenameDrafts((prev) => ({ ...prev, [col.name]: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') rename(col.name)
+                  }}
+                  className="flex-1"
+                  aria-label={`Name of the ${humanize(col.name)} column`}
+                />
+                <Badge variant="secondary" className="shrink-0">
+                  {TYPE_LABEL[col.type]}
+                  {col.required ? ' · required' : ''}
+                </Badge>
+                {/* Only shown once there is a rename to commit. Sitting
+                    there permanently, this tick was a ghost icon button
+                    the same weight as the delete beside it — and one of
+                    the two destroys a column of data. */}
+                {renamed && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    disabled={busy}
+                    onClick={() => rename(col.name)}
+                    aria-label={`Rename ${col.name} to ${draft.trim()}`}
+                  >
+                    <CheckIcon />
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="destructive-ghost"
+                  size="icon-sm"
+                  disabled={busy}
+                  onClick={() => setDeletingColumn(col.name)}
+                  aria-label={`Delete the ${humanize(col.name)} column`}
+                >
+                  <Trash2Icon />
+                </Button>
+              </div>
+            )
+          })}
         </div>
 
         <div className="flex flex-col gap-2 border-t pt-4">
-          <Label>Add column</Label>
+          <Label htmlFor="new-column-name">Add a column</Label>
           <div className="flex items-center gap-2">
             <Input
-              placeholder="Column name"
+              id="new-column-name"
+              placeholder="e.g. price"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') addColumn()
+              }}
               className="flex-1"
             />
             <Select value={newType} onValueChange={(value) => setNewType(value as ColumnType)}>
-              <SelectTrigger size="sm" className="w-24">
+              <SelectTrigger size="sm" className="w-28" aria-label="Column type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -144,18 +175,19 @@ export function ManageColumnsDialog({ open, onOpenChange, table, onChanged }: Ma
                 <SelectItem value="boolean">Yes/No</SelectItem>
               </SelectContent>
             </Select>
-            <label className="flex items-center gap-1 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                className="size-3.5 rounded border-input"
-                checked={newRequired}
-                onChange={(e) => setNewRequired(e.target.checked)}
-              />
-              Required
-            </label>
             <Button type="button" variant="outline" size="sm" disabled={busy || !newName.trim()} onClick={addColumn}>
               <PlusIcon /> Add
             </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="new-column-required"
+              checked={newRequired}
+              onCheckedChange={(checked) => setNewRequired(checked === true)}
+            />
+            <Label htmlFor="new-column-required" className="text-xs font-normal text-muted-foreground">
+              Every row must have a value for this
+            </Label>
           </div>
         </div>
 
@@ -171,10 +203,14 @@ export function ManageColumnsDialog({ open, onOpenChange, table, onChanged }: Ma
         onOpenChange={(next) => {
           if (!next) setDeletingColumn(null)
         }}
+        what={`the “${humanize(deletingColumn ?? '')}” column`}
+        consequence={`Its value is erased from every row in ${table.display_name}. This can’t be undone.`}
+        confirmLabel="Delete column"
         requestDelete={(confirmToken) =>
           api.deleteColumn(token, businessId, table.table_name, deletingColumn!, confirmToken)
         }
         onDeleted={() => {
+          toast.success('Column deleted')
           onChanged({ ...table, columns: table.columns.filter((c) => c.name !== deletingColumn) })
           setDeletingColumn(null)
         }}
