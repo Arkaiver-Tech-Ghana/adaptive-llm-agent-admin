@@ -3,7 +3,20 @@
 // Every call goes through `request`, which attaches the bearer token and
 // turns a non-2xx response into an `ApiError` the caller can inspect.
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+// Base URL resolution, in precedence order:
+//   1. VITE_API_BASE_URL, from a gitignored `.env.*.local` (personal override)
+//   2. the per-mode default below
+//
+// The default is mode-aware so that NO env file needs to be committed: a
+// production build with no env file present resolves to the deployed backend
+// rather than to localhost. That direction matters — the failure this guards
+// against is `npm run deploy` baking `http://localhost:8000` into the bundle
+// and pointing the live admin app at a backend that only exists on a laptop.
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ??
+  (import.meta.env.PROD
+    ? 'https://kampuscrave-llm-agent.arkaiver.com'
+    : 'http://localhost:8000')
 
 export class ApiError extends Error {
   status: number
