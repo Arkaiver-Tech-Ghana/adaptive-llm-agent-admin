@@ -39,6 +39,14 @@ import { useAuth } from '@/lib/auth'
 
 const ACCENT = '#4F46E5'
 
+/**
+ * "Docs" points at the engine repo's public docs (config schema + ADRs) —
+ * there is no docs site yet and "/docs" was a dead route. These are
+ * engineering docs, not a setup guide for a business owner, so swap this for
+ * a real docs URL once one exists.
+ */
+const DOCS_URL = 'https://github.com/Arkaiver-Tech-Ghana/adaptive-llm-agent/tree/main/docs'
+
 /* ------------------------------------------------------------ Chat mockup */
 
 /**
@@ -366,7 +374,9 @@ export function LandingPage() {
               Pricing
             </a>
             <a
-              href="/docs"
+              href={DOCS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="rounded-md px-2.5 py-2 text-[13px] text-[#71717A] transition-colors hover:text-[#18181B] sm:px-3 sm:text-[14px]"
             >
               Docs
@@ -552,7 +562,9 @@ export function LandingPage() {
                 Start free
               </Link>
               <a
-                href="/docs"
+                href={DOCS_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex h-12 items-center justify-center text-[15px] font-semibold transition-opacity hover:opacity-80 sm:px-2"
                 style={{ color: ACCENT }}
               >
