@@ -128,3 +128,46 @@
     @apply font-sans;
     }
 }
+
+/* ---------------------------------------------------------- Landing page */
+/* Only two things on the marketing page need real CSS rather than utility
+   classes: a keyframe, and a mask that has to change at a breakpoint (an
+   inline style cannot carry a media query). Everything else on that page
+   stays inline so the admin app's dark-mode class can never reach it. */
+
+/* Chat bubbles mount one at a time as the thread plays; each animates once
+   on mount. */
+@keyframes qtc-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.qtc-bubble-in {
+  animation: qtc-bubble-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Mobile use-case slides show the image fading out before the copy starts.
+   On desktop the copy sits over the image instead, so the mask is dropped. */
+.qtc-slide-fade {
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+}
+
+@media (min-width: 1024px) {
+  .qtc-slide-fade {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qtc-bubble-in {
+    animation: none;
+  }
+}
