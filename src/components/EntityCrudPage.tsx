@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { toast } from 'sonner'
+import { PencilIcon, PlusIcon, SearchIcon, Trash2Icon, TableIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -14,12 +17,16 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
+import { EmptyState } from '@/components/EmptyState'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { useAuth } from '@/lib/auth'
+import { formatCellValue, singularize } from '@/lib/format'
 import type { ConfirmationRequired, DeleteResult } from '@/lib/api'
 
 // Generic CRUD table over a "data row" resource keyed by a unique string
@@ -33,10 +40,14 @@ export interface EntityColumn<T> {
   label: string
   type: 'text' | 'number' | 'boolean'
   step?: string
+  required?: boolean
 }
 
 interface EntityCrudPageProps<T extends object> {
   title: string
+  description?: ReactNode
+  backTo?: { label: string; to: string }
+  headerActions?: ReactNode
   idKey: keyof T
   columns: EntityColumn<T>[]
   emptyItem: T
@@ -53,6 +64,9 @@ interface EntityCrudPageProps<T extends object> {
 
 export function EntityCrudPage<T extends object>({
   title,
+  description,
+  backTo,
+  headerActions,
   idKey,
   columns,
   emptyItem,
@@ -71,6 +85,12 @@ export function EntityCrudPage<T extends object>({
   const [creating, setCreating] = useState(false)
   const [draft, setDraft] = useState<T>(emptyItem)
   const [deleteTarget, setDeleteTarget] = useState<T | null>(null)
+  const [query, setQuery] = useState('')
+
+  // The record's own name, e.g. "Room Type" for a "Room Types" table. This
+  // was `title.slice(0, -1)`, which produced "Add Dupe Tes" for any table
+  // whose name doesn't happen to end in a plural s.
+  const noun = singularize(title)
 
   async function refresh() {
     setLoading(true)
@@ -99,77 +119,153 @@ export function EntityCrudPage<T extends object>({
   }
 
   async function submitCreate() {
-    try {
-      await create(token, businessId, draft)
-      toast.success(`${title.slice(0, -1)} created`)
-      setCreating(false)
-      refresh()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err))
-    }
+    await create(token, businessId, draft)
+    toast.success(`${noun} added`)
+    setCreating(false)
+    refresh()
   }
 
   async function submitEdit() {
     if (!editing) return
-    try {
-      const id = String(editing[idKey])
-      await update(token, businessId, id, draft)
-      toast.success(`${title.slice(0, -1)} updated`)
-      setEditing(null)
-      refresh()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : String(err))
-    }
+    const id = String(editing[idKey])
+    await update(token, businessId, id, draft)
+    toast.success(`${noun} updated`)
+    setEditing(null)
+    refresh()
   }
 
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{title}</h1>
-        <Button onClick={openCreate}>Add</Button>
-      </div>
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    if (!needle) return items
+    return items.filter((item) =>
+      columns.some((col) => String(item[col.key] ?? '').toLowerCase().includes(needle)),
+    )
+  }, [items, columns, query])
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {columns.map((col) => (
-              <TableHead key={String(col.key)}>{col.label}</TableHead>
-            ))}
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {items.map((item) => (
-            <TableRow key={String(item[idKey])}>
-              {columns.map((col) => (
-                <TableCell key={String(col.key)}>
-                  {col.type === 'boolean' ? (item[col.key] ? 'Yes' : 'No') : String(item[col.key])}
-                </TableCell>
-              ))}
-              <TableCell className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" onClick={() => openEdit(item)}>
-                  Edit
-                </Button>
-                <Button variant="destructive" size="sm" onClick={() => setDeleteTarget(item)}>
-                  Delete
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-          {!loading && items.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={columns.length + 1} className="text-center text-muted-foreground">
-                No {title.toLowerCase()} yet.
-              </TableCell>
-            </TableRow>
+  const searchable = items.length > 5
+
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={title}
+        description={description}
+        backTo={backTo}
+        actions={
+          <>
+            {headerActions}
+            <Button onClick={openCreate}>
+              <PlusIcon /> Add {noun.toLowerCase()}
+            </Button>
+          </>
+        }
+      />
+
+      {loading ? (
+        <TableSkeleton columns={columns.length} />
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={TableIcon}
+          title={`No ${title.toLowerCase()} yet`}
+          description={`Rows you add here are what the assistant reads from and writes to when a customer asks about ${title.toLowerCase()}.`}
+          action={
+            <Button onClick={openCreate}>
+              <PlusIcon /> Add {noun.toLowerCase()}
+            </Button>
+          }
+        />
+      ) : (
+        <div className="flex flex-col gap-3">
+          {searchable && (
+            <div className="flex items-center justify-between gap-3">
+              <div className="relative w-full max-w-64">
+                <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pl-7.5"
+                  placeholder={`Search ${title.toLowerCase()}`}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  aria-label={`Search ${title.toLowerCase()}`}
+                />
+              </div>
+              <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                {visible.length} of {items.length}
+              </span>
+            </div>
           )}
-        </TableBody>
-      </Table>
+
+          <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  {columns.map((col) => (
+                    <TableHead key={String(col.key)} className="px-4 text-xs text-muted-foreground">
+                      {col.label}
+                    </TableHead>
+                  ))}
+                  <TableHead className="w-0 px-4 text-right text-xs text-muted-foreground">
+                    <span className="sr-only">Row actions</span>
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visible.map((item) => (
+                  <TableRow key={String(item[idKey])} className="group/row">
+                    {columns.map((col) => (
+                      <TableCell
+                        key={String(col.key)}
+                        className={`px-4 py-2.5 ${col.type === 'number' ? 'tabular-nums' : ''}`}
+                      >
+                        {formatCellValue(item[col.key], col.type)}
+                      </TableCell>
+                    ))}
+                    {/* The action buttons live in an inner flex row: putting
+                        `flex` on the cell itself dropped its `align-middle`,
+                        so the controls sat off-centre against the text. */}
+                    <TableCell className="px-4 py-2.5">
+                      <div className="flex justify-end gap-1 opacity-70 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => openEdit(item)}
+                          aria-label={`Edit this ${noun.toLowerCase()}`}
+                        >
+                          <PencilIcon />
+                        </Button>
+                        <Button
+                          variant="destructive-ghost"
+                          size="icon-sm"
+                          onClick={() => setDeleteTarget(item)}
+                          aria-label={`Delete this ${noun.toLowerCase()}`}
+                        >
+                          <Trash2Icon />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {visible.length === 0 && (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell
+                      colSpan={columns.length + 1}
+                      className="px-4 py-10 text-center text-muted-foreground"
+                    >
+                      Nothing matches “{query}”.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
 
       <EntityFormDialog
         open={creating}
         onOpenChange={setCreating}
-        title={`Add ${title.slice(0, -1)}`}
+        title={`Add ${noun.toLowerCase()}`}
+        description={`This adds one row to ${title}.`}
+        submitLabel="Add"
+        busyLabel="Adding…"
         columns={columns}
         idKey={idKey}
         draft={draft}
@@ -181,7 +277,10 @@ export function EntityCrudPage<T extends object>({
       <EntityFormDialog
         open={editing !== null}
         onOpenChange={(open) => !open && setEditing(null)}
-        title={`Edit ${title.slice(0, -1)}`}
+        title={`Edit ${noun.toLowerCase()}`}
+        description="Changes take effect for the assistant immediately."
+        submitLabel="Save changes"
+        busyLabel="Saving…"
         columns={columns}
         idKey={idKey}
         draft={draft}
@@ -194,11 +293,13 @@ export function EntityCrudPage<T extends object>({
         <ConfirmDeleteDialog
           open={deleteTarget !== null}
           onOpenChange={(open) => !open && setDeleteTarget(null)}
+          what={`this ${noun.toLowerCase()}`}
+          consequence={`The assistant will stop being able to see it. This can’t be undone.`}
           requestDelete={(confirmToken) =>
             remove(token, businessId, String(deleteTarget[idKey]), confirmToken)
           }
           onDeleted={() => {
-            toast.success(`${title.slice(0, -1)} deleted`)
+            toast.success(`${noun} deleted`)
             refresh()
           }}
         />
@@ -207,10 +308,28 @@ export function EntityCrudPage<T extends object>({
   )
 }
 
+function TableSkeleton({ columns }: { columns: number }) {
+  return (
+    <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10">
+      <div className="h-10 border-b bg-muted/40" />
+      {Array.from({ length: 4 }).map((_, row) => (
+        <div key={row} className="flex items-center gap-4 border-b px-4 py-3 last:border-0">
+          {Array.from({ length: columns }).map((_, col) => (
+            <Skeleton key={col} className="h-4 flex-1" style={{ maxWidth: col === 0 ? '10rem' : '7rem' }} />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function EntityFormDialog<T extends object>({
   open,
   onOpenChange,
   title,
+  description,
+  submitLabel,
+  busyLabel,
   columns,
   idKey,
   draft,
@@ -221,46 +340,71 @@ function EntityFormDialog<T extends object>({
   open: boolean
   onOpenChange: (open: boolean) => void
   title: string
+  description: string
+  submitLabel: string
+  busyLabel: string
   columns: EntityColumn<T>[]
   idKey: keyof T
   draft: T
   setDraft: (draft: T) => void
   idEditable: boolean
-  onSubmit: () => void
+  onSubmit: () => Promise<void>
 }) {
+  const [busy, setBusy] = useState(false)
+
+  // Every other submit in the app latches while its request is in flight;
+  // this one didn't, so a double-fire — an Enter that also activated the
+  // focused Save, a second click before the dialog closed — sent a second
+  // POST and wrote a duplicate row. The latch closes that whole class.
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    if (busy) return
+    setBusy(true)
+    try {
+      await onSubmit()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => !busy && onOpenChange(next)}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <form
-          className="flex flex-col gap-4"
-          onSubmit={(e) => {
-            e.preventDefault()
-            onSubmit()
-          }}
-        >
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           {columns.map((col) =>
             col.type === 'boolean' ? (
-              <label key={String(col.key)} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="size-4 rounded border-input"
-                  disabled={col.key === idKey && !idEditable}
+              <div key={String(col.key)} className="flex items-center gap-2.5">
+                <Checkbox
+                  id={String(col.key)}
+                  disabled={busy || (col.key === idKey && !idEditable)}
                   checked={Boolean(draft[col.key])}
-                  onChange={(e) => setDraft({ ...draft, [col.key]: e.target.checked } as T)}
+                  onCheckedChange={(checked) =>
+                    setDraft({ ...draft, [col.key]: checked === true } as T)
+                  }
                 />
-                {col.label}
-              </label>
+                <Label htmlFor={String(col.key)} className="font-normal">
+                  {col.label}
+                </Label>
+              </div>
             ) : (
               <div key={String(col.key)} className="flex flex-col gap-1.5">
-                <Label htmlFor={String(col.key)}>{col.label}</Label>
+                <Label htmlFor={String(col.key)}>
+                  {col.label}
+                  {col.required === false && (
+                    <span className="font-normal text-muted-foreground">Optional</span>
+                  )}
+                </Label>
                 <Input
                   id={String(col.key)}
                   type={col.type}
                   step={col.step}
-                  disabled={col.key === idKey && !idEditable}
+                  disabled={busy || (col.key === idKey && !idEditable)}
                   value={String(draft[col.key] ?? '')}
                   onChange={(e) =>
                     setDraft({
@@ -268,16 +412,18 @@ function EntityFormDialog<T extends object>({
                       [col.key]: col.type === 'number' ? Number(e.target.value) : e.target.value,
                     } as T)
                   }
-                  required
+                  required={col.required !== false}
                 />
               </div>
             ),
           )}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit">Save</Button>
+            <Button type="submit" disabled={busy}>
+              {busy ? busyLabel : submitLabel}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -23,6 +23,7 @@ export function SignupPage() {
   const [displayName, setDisplayName] = useState('')
   const [businessId, setBusinessId] = useState('')
   const [businessIdEdited, setBusinessIdEdited] = useState(false)
+  const [showBusinessId, setShowBusinessId] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -54,11 +55,22 @@ export function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center p-6">
+    <div className="flex min-h-svh flex-col items-center justify-center gap-6 p-6">
+      <span className="flex items-center gap-2">
+        <span
+          aria-hidden
+          className="flex size-7 items-center justify-center rounded-md bg-primary font-heading text-sm font-semibold text-primary-foreground"
+        >
+          Q
+        </span>
+        <span className="font-heading text-lg font-semibold tracking-tight">Qantonic</span>
+      </span>
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Create your Business</CardTitle>
-          <CardDescription>Sign up to manage your own AI agent.</CardDescription>
+          <CardTitle>Create your business</CardTitle>
+          <CardDescription>
+            Set up an assistant that answers your customers from your own data.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -71,20 +83,40 @@ export function SignupPage() {
                 required
               />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="business_id">Business ID</Label>
-              <Input
-                id="business_id"
-                value={businessId}
-                onChange={(e) => {
-                  setBusinessIdEdited(true)
-                  setBusinessId(slugify(e.target.value))
-                }}
-                pattern="[a-z0-9]+(-[a-z0-9]+)*"
-                title="Lowercase letters, digits, and hyphens only"
-                required
-              />
-            </div>
+            {/* Derived, not asked for — same treatment as a table's storage
+                name. "Business ID" as a bare required field made the second
+                thing a new owner ever sees a format they had to guess. */}
+            {showBusinessId ? (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="business_id">Account address</Label>
+                <Input
+                  id="business_id"
+                  value={businessId}
+                  onChange={(e) => {
+                    setBusinessIdEdited(true)
+                    setBusinessId(slugify(e.target.value))
+                  }}
+                  pattern="[a-z0-9]+(-[a-z0-9]+)*"
+                  title="Lowercase letters, digits, and hyphens only"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Lowercase letters, digits and hyphens. Can't be changed later.
+                </p>
+              </div>
+            ) : (
+              <p className="-mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                Your account address will be{' '}
+                <code className="rounded bg-muted px-1 py-0.5">{businessId || '…'}</code>
+                <button
+                  type="button"
+                  className="rounded text-foreground underline underline-offset-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                  onClick={() => setShowBusinessId(true)}
+                >
+                  Change
+                </button>
+              </p>
+            )}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="email">Your email</Label>
               <Input
@@ -109,7 +141,7 @@ export function SignupPage() {
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" disabled={busy} className="mt-2">
-              {busy ? 'Creating…' : 'Create Business'}
+              {busy ? 'Creating…' : 'Create business'}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               Already have an account?{' '}

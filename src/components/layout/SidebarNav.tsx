@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
+import { BotIcon, DatabaseIcon, LogOutIcon, ScrollTextIcon, type LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -10,13 +11,32 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/auth'
+import type { AdminRole } from '@/lib/api'
 import { cn } from '@/lib/utils'
+
+// "Config" is what the backend calls it; an owner reading the rail wants to
+// know which of their things each screen edits. Icons carry the same split
+// so the rail is scannable without reading.
+const NAV_ITEMS: { to: string; label: string; icon: LucideIcon; roles: AdminRole[] }[] = [
+  { to: '/config', label: 'Agent', icon: BotIcon, roles: ['owner'] },
+  { to: '/database', label: 'Database', icon: DatabaseIcon, roles: ['owner'] },
+  { to: '/audit-log', label: 'Audit log', icon: ScrollTextIcon, roles: ['owner', 'platform_operator'] },
+]
+
+const ROLE_LABEL: Record<AdminRole, string> = {
+  owner: 'Owner',
+  platform_operator: 'Platform operator',
+}
 
 function navLinkClass({ isActive }: { isActive: boolean }) {
   return cn(
-    'rounded-md px-3 py-2 text-sm font-medium transition-colors',
+    // `w-full` so the hit area, hover fill and focus ring span the rail
+    // rather than the label's own width, and an explicit focus-visible
+    // ring: the base `* { outline-ring/50 }` in index.css only sets the
+    // outline *colour*, so these links had no visible focus state at all.
+    'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
     isActive
-      ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+      ? 'bg-primary/8 text-primary'
       : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
   )
 }
@@ -32,34 +52,51 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   if (!user) return null
 
   return (
-    <div className="flex h-full flex-col gap-6">
-      <span className="font-heading text-lg font-semibold">Qantonic</span>
+    <div className="flex h-full w-full min-w-0 flex-col gap-6">
+      <span className="flex items-center gap-2 px-1 pt-0.5">
+        <span
+          aria-hidden
+          className="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary font-heading text-xs font-semibold text-primary-foreground"
+        >
+          Q
+        </span>
+        <span className="font-heading text-base font-semibold tracking-tight">Qantonic</span>
+      </span>
 
-      <nav className="flex flex-1 flex-col gap-1">
-        {user.role === 'owner' && (
-          <NavLink to="/config" className={navLinkClass} onClick={onNavigate}>
-            Config
+      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
+        {NAV_ITEMS.filter((item) => item.roles.includes(user.role)).map(({ to, label, icon: Icon }) => (
+          <NavLink key={to} to={to} className={navLinkClass} onClick={onNavigate}>
+            <Icon className="size-4 shrink-0" />
+            {label}
           </NavLink>
-        )}
-        {user.role === 'owner' && (
-          <NavLink to="/database" className={navLinkClass} onClick={onNavigate}>
-            Database
-          </NavLink>
-        )}
-        {(user.role === 'owner' || user.role === 'platform_operator') && (
-          <NavLink to="/audit-log" className={navLinkClass} onClick={onNavigate}>
-            Audit Log
-          </NavLink>
-        )}
+        ))}
       </nav>
 
-      <div className="flex flex-col gap-2 border-t border-sidebar-border pt-4">
-        <span className="truncate text-xs text-sidebar-foreground/70">
-          {user.email}
-          {user.businessId ? ` · ${user.businessId}` : ''}
-        </span>
-        <Button variant="outline" size="sm" onClick={() => setConfirmingLogout(true)}>
-          Log out
+      <div className="flex flex-col gap-3 border-t border-sidebar-border pt-4">
+        <div className="flex min-w-0 items-center gap-2.5 px-1">
+          <span
+            aria-hidden
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground uppercase"
+          >
+            {user.email.slice(0, 2)}
+          </span>
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate text-sm font-medium" title={user.email}>
+              {user.email}
+            </span>
+            <span className="truncate text-xs text-muted-foreground">
+              {ROLE_LABEL[user.role]}
+              {user.businessId ? ` · ${user.businessId}` : ''}
+            </span>
+          </span>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-muted-foreground hover:text-foreground"
+          onClick={() => setConfirmingLogout(true)}
+        >
+          <LogOutIcon /> Log out
         </Button>
       </div>
 
