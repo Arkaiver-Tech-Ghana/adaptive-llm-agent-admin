@@ -394,9 +394,19 @@ const CHANNELS = [
 
 /**
  * Use cases are a slideshow rather than a row of cards because the picture is
- * the argument here — a shopkeeper with a phone in hand says "this is for you"
- * to a reader who will not stop to read three bullets. Each slide is one image
- * and as little copy as the point survives on.
+ * the argument here, not the paragraph under it.
+ *
+ * The picture is deliberately of the *customer*, mid-question, on their own
+ * phone or laptop — not of a shopkeeper or a receptionist. The buyer being
+ * sold to here runs the business; the thing they need to picture is their
+ * customer being served while they are asleep, which is the customer's side of
+ * the glass. Staff portraits say "here is a person doing the work", which is
+ * the exact job the product removes.
+ *
+ * Each slide carries the actual exchange as an overlay for the same reason. A
+ * stock photo of someone holding a phone is worth nothing on its own — the
+ * question and the answer floating over it are what make it a picture of an
+ * agent working.
  *
  * Images are committed under public/images rather than hotlinked, so the page
  * has no third-party runtime dependency. All are Unsplash-licensed (free
@@ -407,23 +417,29 @@ const USE_CASES = [
     title: 'Sales',
     body: 'Your agent quotes from your live price list, answers the objection, and closes — at 2am, on the channel the customer already has open.',
     image: '/images/use-sales.webp',
-    alt: 'A market trader holding his phone and giving a thumbs up at his stall',
+    alt: 'A customer typing a question into a chat on their phone',
     /** Focal point — keeps the subject in frame as the crop changes. */
-    position: '50% 35%',
+    position: '50% 50%',
+    question: 'Do you have the 42 in stock?',
+    reply: 'Two left. Want me to hold one and send you the payment link?',
   },
   {
     title: 'Enquiries',
     body: 'The same twelve questions, answered from your own docs and policies, every time, without anyone retyping them.',
     image: '/images/use-enquiries.webp',
-    alt: 'A woman smiling while taking a customer call at her desk',
-    position: '50% 40%',
+    alt: 'A customer on a laptop asking the agent a question about the site',
+    position: '50% 45%',
+    question: "What's your refund policy?",
+    reply: '30 days, unopened, receipt not needed. Want me to start one?',
   },
   {
     title: 'And many more',
     body: 'Bookings, order status, delivery updates, opening hours, handover to a human when it matters. If it happens in a chat, it can happen here.',
     image: '/images/use-more.webp',
-    alt: 'A shop owner behind her counter with her phone beside her',
+    alt: 'A customer messaging on their phone with a laptop open behind them',
     position: '50% 45%',
+    question: 'Can I move my booking to Friday, 7pm?',
+    reply: 'Moved — table for two, Friday 7pm. Confirmation on its way.',
   },
 ] as const
 
@@ -487,6 +503,24 @@ const SETUP_OPTIONS = [
 
 /* ------------------------------------------------------------- Small parts */
 
+/** Points right; the previous-slide button rotates it. */
+function Chevron({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="m7.5 4.5 6 5.5-6 5.5" />
+    </svg>
+  )
+}
+
 function Check({ className }: IconProps) {
   return (
     <svg
@@ -532,21 +566,34 @@ function CalendlyButton({
 function UseCaseSlides() {
   const reduced = usePrefersReducedMotion()
   const [index, setIndex] = useState(0)
-  const [paused, setPaused] = useState(false)
+  const [hidden, setHidden] = useState(false)
+
+  const go = (next: number) =>
+    setIndex((next + USE_CASES.length) % USE_CASES.length)
 
   useEffect(() => {
-    if (reduced || paused) return
+    if (reduced || hidden) return
     const timer = window.setTimeout(
       () => setIndex((current) => (current + 1) % USE_CASES.length),
       SLIDE_MS,
     )
+    // index is a dependency, so any manual jump also restarts the dwell.
     return () => window.clearTimeout(timer)
-  }, [index, paused, reduced])
+  }, [index, hidden, reduced])
 
-  // A visitor reading a slide should not have it yanked away, and a background
-  // tab should not burn a timer at all.
+  /**
+   * A background tab should not burn a timer. This is the *only* thing that
+   * stops the rotation.
+   *
+   * It used to pause on hover and on focus as well, which looked reasonable
+   * and was badly wrong: the section is full-bleed and 560px tall, so a cursor
+   * resting anywhere near the middle of the screen sat inside it and the
+   * slideshow simply never moved. Focus was the same trap one step later —
+   * clicking a dot left focus on that dot and froze it indefinitely. Manual
+   * controls are the pause; do not reintroduce a hover one.
+   */
   useEffect(() => {
-    const sync = () => setPaused(document.hidden)
+    const sync = () => setHidden(document.hidden)
     document.addEventListener('visibilitychange', sync)
     return () => document.removeEventListener('visibilitychange', sync)
   }, [])
@@ -556,10 +603,6 @@ function UseCaseSlides() {
       aria-roledescription="carousel"
       aria-label="What people put their agents on"
       className="relative isolate overflow-hidden border-y border-[#E4E4E7] bg-[#FAFAF9]"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)}
-      onBlur={() => setPaused(false)}
     >
       {/* All slides occupy the same grid cell, so the section is as tall as the
           tallest slide and a crossfade never shifts the page. */}
@@ -598,6 +641,29 @@ function UseCaseSlides() {
                       'linear-gradient(90deg, rgba(9,9,11,0.82) 0%, rgba(9,9,11,0.62) 42%, rgba(9,9,11,0.15) 78%, rgba(9,9,11,0) 100%)',
                   }}
                 />
+
+                {/* The exchange itself, over the photo. This is what turns a
+                    picture of someone holding a phone into a picture of an
+                    agent doing the job. */}
+                <div className="absolute inset-0">
+                  <div className="mx-auto flex h-full max-w-6xl items-center justify-end px-5 lg:px-8">
+                    <div className="w-full max-w-[250px] space-y-2 lg:max-w-[330px]">
+                      <div className="flex justify-end">
+                        <p className="max-w-[92%] rounded-2xl rounded-br-sm bg-white px-3 py-2 text-[12px] leading-[1.45] font-medium text-[#18181B] shadow-[0_2px_10px_rgba(9,9,11,0.18)] lg:px-3.5 lg:py-2.5 lg:text-[14px]">
+                          {slide.question}
+                        </p>
+                      </div>
+                      <div className="flex justify-start">
+                        <p
+                          className="max-w-[96%] rounded-2xl rounded-bl-sm px-3 py-2 text-[12px] leading-[1.45] font-medium text-white shadow-[0_2px_10px_rgba(9,9,11,0.18)] lg:px-3.5 lg:py-2.5 lg:text-[14px]"
+                          style={{ backgroundColor: ACCENT }}
+                        >
+                          {slide.reply}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="relative mx-auto flex min-h-[520px] max-w-6xl flex-col justify-end px-5 pt-[268px] pb-20 sm:pt-[348px] lg:min-h-[560px] lg:justify-center lg:px-8 lg:pt-20 lg:pb-24">
@@ -617,21 +683,44 @@ function UseCaseSlides() {
 
       {/* Controls sit outside the fading stack so they never fade with a slide. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0">
-        <div className="mx-auto flex max-w-6xl items-center gap-2 px-5 pb-8 lg:px-8 lg:pb-12">
-          {USE_CASES.map((slide, i) => (
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 pb-8 lg:px-8 lg:pb-12">
+          <div className="flex items-center gap-2">
+            {USE_CASES.map((slide, i) => (
+              <button
+                key={slide.title}
+                type="button"
+                onClick={() => go(i)}
+                aria-label={`Show ${slide.title}`}
+                aria-current={i === index}
+                className="pointer-events-auto h-1.5 rounded-full transition-all duration-500"
+                style={{
+                  width: i === index ? 32 : 12,
+                  backgroundColor: i === index ? ACCENT : 'rgba(113,113,122,0.45)',
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Solid white so they read against both the photo they sit on at
+              lg and the page background they sit on below it. */}
+          <div className="flex items-center gap-2">
             <button
-              key={slide.title}
               type="button"
-              onClick={() => setIndex(i)}
-              aria-label={`Show ${slide.title}`}
-              aria-current={i === index}
-              className="pointer-events-auto h-1.5 rounded-full transition-all duration-500"
-              style={{
-                width: i === index ? 32 : 12,
-                backgroundColor: i === index ? ACCENT : 'rgba(113,113,122,0.35)',
-              }}
-            />
-          ))}
+              onClick={() => go(index - 1)}
+              aria-label="Previous slide"
+              className="pointer-events-auto flex size-10 items-center justify-center rounded-full border border-[#E4E4E7] bg-white text-[#18181B] shadow-[0_2px_10px_rgba(9,9,11,0.12)] transition-colors hover:bg-[#F4F4F5]"
+            >
+              <Chevron className="h-4 w-4 rotate-180" />
+            </button>
+            <button
+              type="button"
+              onClick={() => go(index + 1)}
+              aria-label="Next slide"
+              className="pointer-events-auto flex size-10 items-center justify-center rounded-full border border-[#E4E4E7] bg-white text-[#18181B] shadow-[0_2px_10px_rgba(9,9,11,0.12)] transition-colors hover:bg-[#F4F4F5]"
+            >
+              <Chevron className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
     </section>
