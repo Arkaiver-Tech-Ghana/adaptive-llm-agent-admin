@@ -59,13 +59,19 @@ Before starting anything: `git fetch --prune && git branch -a | grep <topic>`.
 
 Merge commits are disabled at the repo level, so the wrong button is not there.
 
-**Never promote with a merge commit.** It leaves `main` holding a commit staging
-lacks, so staging reads as 1 behind immediately and permanently, and every
-future catch-up has to reason about it. This happened twice in one day and was
-merged back down by hand both times.
+**Never promote with a merge commit — and not with a squash either.** Both put
+a commit on `main` that staging does not have, so staging reads as 1 behind
+immediately and permanently, and every later catch-up has to reason about it.
+This happened three times in one day and was undone by hand each time. Only a
+rebase or fast-forward leaves the two branches identical.
+
+Merge commits are disabled repo-wide, but **squash is not** — `feature ->
+staging` needs it. So nothing mechanically prevents a squash-promotion. This
+paragraph is the only guard; read it before clicking.
 
 After any promotion, verify `staging` is `ahead:N behind:0`. If it is behind,
-merge `main` down before starting anything new.
+fast-forward it to `main` (`git merge --ff-only origin/main`) before starting
+anything new.
 
 Releases are marked with **annotated semver tags on `main`** — `git tag -a
 v1.1.0 -m "..."`. Annotated, not lightweight, so the tag carries a date and a
@@ -135,8 +141,15 @@ on unmerged branches, so the API supported UI that did not exist.
 
 ## Protection and CI
 
-`main` requires a pull request and a passing `test` check. `staging/<version>`
-is left unprotected so integration stays cheap.
+`main` requires a pull request and a passing `test` check.
+
+`staging/<version>` requires nothing — no PR, no checks — so integration stays
+cheap. It does have **deletion and force-push blocked**, and that is not
+decoration: `delete_branch_on_merge` is enabled, and on a release PR the *head*
+branch is `staging/<version>`. Without the protection, merging a release would
+delete the integration branch. It survived once only because an unrelated PR
+happened to be open against it, and GitHub will not delete a branch that is the
+base of an open PR.
 
 Deploy checks (for example `Workers Builds` on the admin repo) are **not**
 required — they are a deploy signal, not a correctness gate, and a provider
