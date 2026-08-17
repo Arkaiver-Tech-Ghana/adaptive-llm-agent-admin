@@ -1,10 +1,18 @@
 import { useState } from 'react'
-import { PlusIcon, XIcon } from 'lucide-react'
+import { PlusIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useAuth } from '@/lib/auth'
 import { api, ApiError, type ColumnType, type IdType, type TableDef } from '@/lib/api'
 
@@ -43,6 +51,7 @@ export function TableBuilderDialog({ open, onOpenChange, onCreated }: TableBuild
   const [tableNameEdited, setTableNameEdited] = useState(false)
   const [idType, setIdType] = useState<IdType>('uuid')
   const [columns, setColumns] = useState<DraftColumn[]>([{ ...EMPTY_COLUMN }])
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -52,6 +61,7 @@ export function TableBuilderDialog({ open, onOpenChange, onCreated }: TableBuild
     setTableNameEdited(false)
     setIdType('uuid')
     setColumns([{ ...EMPTY_COLUMN }])
+    setShowAdvanced(false)
     setError(null)
   }
 
@@ -94,9 +104,13 @@ export function TableBuilderDialog({ open, onOpenChange, onCreated }: TableBuild
         onOpenChange(next)
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>New table</DialogTitle>
+          <DialogDescription>
+            One table holds one kind of thing — rooms, menu items, appointments. Once it exists, the
+            assistant can look things up in it and add to it for your customers.
+          </DialogDescription>
         </DialogHeader>
         <form
           className="flex flex-col gap-4"
@@ -106,47 +120,70 @@ export function TableBuilderDialog({ open, onOpenChange, onCreated }: TableBuild
           }}
         >
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="table-display-name">Name</Label>
+            <Label htmlFor="table-display-name">What does this table hold?</Label>
             <Input
               id="table-display-name"
+              placeholder="e.g. Room types"
               value={displayName}
               onChange={(e) => onDisplayNameChange(e.target.value)}
               required
             />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="table-name">Table ID</Label>
-            <Input
-              id="table-name"
-              value={tableName}
-              onChange={(e) => {
-                setTableNameEdited(true)
-                setTableName(slugify(e.target.value))
-              }}
-              pattern="[a-z0-9_]+"
-              title="Lowercase letters, digits, and underscores only"
-              required
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="table-id-type">Id type</Label>
-            <Select value={idType} onValueChange={(value) => setIdType(value as IdType)}>
-              <SelectTrigger id="table-id-type" size="sm" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="uuid">UUID (default)</SelectItem>
-                <SelectItem value="auto_increment">Auto-increment number</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* The storage identifier is derived, not asked for. It used to
+                be a required field of its own, labelled "Table ID", with no
+                explanation of what it was or why it couldn't have spaces. */}
+            <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+              Stored as{' '}
+              <code className="rounded bg-muted px-1 py-0.5">{tableName || '…'}</code>
+              <button
+                type="button"
+                className="rounded text-foreground underline underline-offset-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                onClick={() => setShowAdvanced((v) => !v)}
+              >
+                {showAdvanced ? 'Hide' : 'Change'}
+              </button>
+            </p>
           </div>
 
+          {showAdvanced && (
+            <div className="flex flex-col gap-4 rounded-lg bg-muted/40 p-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="table-name">Storage name</Label>
+                <Input
+                  id="table-name"
+                  value={tableName}
+                  onChange={(e) => {
+                    setTableNameEdited(true)
+                    setTableName(slugify(e.target.value))
+                  }}
+                  pattern="[a-z0-9_]+"
+                  title="Lowercase letters, digits, and underscores only"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Lowercase letters, digits and underscores. Can't be changed later.
+                </p>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="table-id-type">How rows are identified</Label>
+                <Select value={idType} onValueChange={(value) => setIdType(value as IdType)}>
+                  <SelectTrigger id="table-id-type" size="sm" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="uuid">Random ID (default)</SelectItem>
+                    <SelectItem value="auto_increment">Counting up from 1</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col gap-2">
-            <Label>Columns</Label>
+            <Label>What do you record about each one?</Label>
             {columns.map((col, i) => (
               <div key={i} className="flex items-center gap-2">
                 <Input
-                  placeholder="Column name"
+                  placeholder={i === 0 ? 'e.g. name' : 'e.g. price'}
                   value={col.name}
                   onChange={(e) => updateColumn(i, { name: e.target.value })}
                   className="flex-1"
@@ -155,7 +192,7 @@ export function TableBuilderDialog({ open, onOpenChange, onCreated }: TableBuild
                   value={col.type}
                   onValueChange={(value) => updateColumn(i, { type: value as ColumnType })}
                 >
-                  <SelectTrigger size="sm" className="w-24">
+                  <SelectTrigger size="sm" className="w-28" aria-label="Column type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -164,23 +201,25 @@ export function TableBuilderDialog({ open, onOpenChange, onCreated }: TableBuild
                     <SelectItem value="boolean">Yes/No</SelectItem>
                   </SelectContent>
                 </Select>
-                <label className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    className="size-3.5 rounded border-input"
+                <span className="flex items-center gap-1.5">
+                  <Checkbox
+                    id={`column-required-${i}`}
                     checked={col.required}
-                    onChange={(e) => updateColumn(i, { required: e.target.checked })}
+                    onCheckedChange={(checked) => updateColumn(i, { required: checked === true })}
                   />
-                  Required
-                </label>
+                  <Label htmlFor={`column-required-${i}`} className="text-xs font-normal text-muted-foreground">
+                    Required
+                  </Label>
+                </span>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="destructive-ghost"
                   size="icon-sm"
                   onClick={() => setColumns(columns.filter((_, j) => j !== i))}
                   disabled={columns.length === 1}
+                  aria-label={`Remove ${col.name || 'this column'}`}
                 >
-                  <XIcon />
+                  <Trash2Icon />
                 </Button>
               </div>
             ))}
@@ -191,13 +230,15 @@ export function TableBuilderDialog({ open, onOpenChange, onCreated }: TableBuild
               className="self-start"
               onClick={() => setColumns([...columns, { ...EMPTY_COLUMN }])}
             >
-              <PlusIcon /> Add column
+              <PlusIcon /> Add another
             </Button>
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p className="rounded-lg bg-destructive/8 px-3 py-2 text-sm text-destructive">{error}</p>
+          )}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={busy}>

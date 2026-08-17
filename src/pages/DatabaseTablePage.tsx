@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeftIcon } from 'lucide-react'
+import { Columns3Icon, MoreHorizontalIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Skeleton } from '@/components/ui/skeleton'
 import { EntityCrudPage, type EntityColumn } from '@/components/EntityCrudPage'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { ManageColumnsDialog } from '@/components/ManageColumnsDialog'
 import { useAuth } from '@/lib/auth'
+import { humanize } from '@/lib/format'
 import { api, type EntityRow, type TableDef } from '@/lib/api'
 
 // Owner-only. Drives EntityCrudPage with this table's own dynamic columns
@@ -33,38 +41,74 @@ export function DatabaseTablePage() {
       })
   }, [token, businessId, tableName])
 
-  if (table === undefined) return <p className="text-muted-foreground">Loading…</p>
+  if (table === undefined) {
+    return (
+      <div className="flex flex-col gap-6">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    )
+  }
   if (table === null) return <Navigate to="/database" replace />
 
+  // `col.name` is a storage identifier (`room_type`, `is_available`);
+  // header cells and form labels get the human form of it.
   const columns: EntityColumn<EntityRow>[] = table.columns.map((col) => ({
     key: col.name,
-    label: col.name,
+    label: humanize(col.name),
     type: col.type,
+    required: col.required,
   }))
   const emptyItem: EntityRow = Object.fromEntries([
     ['id', ''],
     ...table.columns.map((col) => [col.name, col.type === 'boolean' ? false : col.type === 'number' ? 0 : '']),
   ]) as EntityRow
 
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <Link to="/database" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeftIcon className="size-4" /> Database
-        </Link>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setManagingColumns(true)}>
-            Manage columns
-          </Button>
-          <Button variant="destructive" size="sm" onClick={() => setDeleting(true)}>
-            Delete table
-          </Button>
-        </div>
-      </div>
+  const columnCount = table.columns.length
 
+  return (
+    <>
+      {/* One header row, not two. Manage columns and Delete table used to
+          sit in a strip above the title, which put the table's most
+          destructive control higher on the page than its primary one. */}
       <EntityCrudPage<EntityRow>
         key={table.columns.map((c) => c.name).join(',')}
         title={table.display_name}
+        description={
+          <>
+            {columnCount} column{columnCount === 1 ? '' : 's'} · stored as{' '}
+            <code className="rounded bg-muted px-1 py-0.5 text-xs">{table.table_name}</code>
+            {table.tool_linked ? ' · the assistant can read and write this table' : ''}
+          </>
+        }
+        backTo={{ label: 'Database', to: '/database' }}
+        headerActions={
+          <>
+            <Button variant="outline" onClick={() => setManagingColumns(true)}>
+              <Columns3Icon /> Columns
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="More table actions">
+                  <MoreHorizontalIcon />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {/* Deferred a tick: opening the dialog inside onSelect
+                    mounts it while the menu is still tearing its own
+                    dismissable layer down, and the dialog is dismissed
+                    along with it before it ever paints. */}
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => setTimeout(() => setDeleting(true), 0)}
+                >
+                  <Trash2Icon /> Delete table
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        }
         idKey="id"
         columns={columns}
         emptyItem={emptyItem}
@@ -84,12 +128,15 @@ export function DatabaseTablePage() {
       <ConfirmDeleteDialog
         open={deleting}
         onOpenChange={setDeleting}
+        what={`the ${table.display_name} table`}
+        consequence="Every row in it is deleted with it, and the assistant loses the tools built from it. This can’t be undone."
+        confirmLabel="Delete table"
         requestDelete={(confirmToken) => api.deleteTable(token, businessId, tableName, confirmToken)}
         onDeleted={() => {
-          toast.success(`Table "${table.display_name}" deleted`)
+          toast.success(`${table.display_name} deleted`)
           navigate('/database')
         }}
       />
-    </div>
+    </>
   )
 }
