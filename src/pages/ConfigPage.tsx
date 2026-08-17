@@ -9,9 +9,9 @@ import { useAuth } from '@/lib/auth'
 import { api, type BusinessConfig } from '@/lib/api'
 
 // Owner-only. Edits the axes issue #17 scopes for config CRUD: persona/
-// tone/context/tool selection/LLM provider. Tools themselves stay
-// read-only here — picking a tool is a v-next concern (dynamic tool
-// wiring isn't built), this just shows what's already configured.
+// tone/context/tool enable-disable/LLM provider. Adding a wholly new tool
+// (not just toggling one that's already wired into a ToolProvider) is a
+// v-next concern — see the "generic CRUD tool" idea in ADR 0008.
 export function ConfigPage() {
   const { user } = useAuth()
   const businessId = user!.businessId!
@@ -40,6 +40,7 @@ export function ConfigPage() {
           tone: config.business_logic.tone,
           out_of_scope_response: config.business_logic.out_of_scope_response,
         },
+        tools: config.tools,
       })
       setConfig(updated)
       toast.success('Config saved')
@@ -94,15 +95,30 @@ export function ConfigPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Tools (read-only)</CardTitle>
+            <CardTitle className="text-base">Tools</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
+          <CardContent className="flex flex-col gap-2">
             {config.tools.length === 0 && <p className="text-sm text-muted-foreground">No tools configured.</p>}
             {config.tools.map((t) => (
-              <Badge key={t.name} variant="secondary">
-                {t.name}
-                {t.requires_confirmation ? ' (confirm)' : ''}
-              </Badge>
+              <label key={t.name} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-3.5 rounded border-input"
+                  checked={t.enabled}
+                  onChange={(e) =>
+                    setConfig({
+                      ...config,
+                      tools: config.tools.map((tool) =>
+                        tool.name === t.name ? { ...tool, enabled: e.target.checked } : tool,
+                      ),
+                    })
+                  }
+                />
+                <Badge variant={t.enabled ? 'secondary' : 'outline'}>
+                  {t.name}
+                  {t.requires_confirmation ? ' (confirm)' : ''}
+                </Badge>
+              </label>
             ))}
           </CardContent>
         </Card>

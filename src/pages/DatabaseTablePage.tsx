@@ -5,6 +5,7 @@ import { ArrowLeftIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EntityCrudPage, type EntityColumn } from '@/components/EntityCrudPage'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
+import { ManageColumnsDialog } from '@/components/ManageColumnsDialog'
 import { useAuth } from '@/lib/auth'
 import { api, type EntityRow, type TableDef } from '@/lib/api'
 
@@ -20,6 +21,7 @@ export function DatabaseTablePage() {
 
   const [table, setTable] = useState<TableDef | null | undefined>(undefined)
   const [deleting, setDeleting] = useState(false)
+  const [managingColumns, setManagingColumns] = useState(false)
 
   useEffect(() => {
     api
@@ -50,12 +52,18 @@ export function DatabaseTablePage() {
         <Link to="/database" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeftIcon className="size-4" /> Database
         </Link>
-        <Button variant="destructive" size="sm" onClick={() => setDeleting(true)}>
-          Delete table
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setManagingColumns(true)}>
+            Manage columns
+          </Button>
+          <Button variant="destructive" size="sm" onClick={() => setDeleting(true)}>
+            Delete table
+          </Button>
+        </div>
       </div>
 
       <EntityCrudPage<EntityRow>
+        key={table.columns.map((c) => c.name).join(',')}
         title={table.display_name}
         idKey="id"
         columns={columns}
@@ -64,6 +72,13 @@ export function DatabaseTablePage() {
         create={(t, b, row) => api.createRow(t, b, tableName, row)}
         update={(t, b, id, patch) => api.updateRow(t, b, tableName, id, patch)}
         remove={(t, b, id, confirmToken) => api.deleteRow(t, b, tableName, id, confirmToken)}
+      />
+
+      <ManageColumnsDialog
+        open={managingColumns}
+        onOpenChange={setManagingColumns}
+        table={table}
+        onChanged={setTable}
       />
 
       <ConfirmDeleteDialog
