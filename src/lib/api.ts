@@ -70,7 +70,7 @@ export interface BusinessConfig {
     tone: string | null
     out_of_scope_response: string | null
   }
-  tools: { name: string; description: string; requires_confirmation: boolean }[]
+  tools: { name: string; description: string; requires_confirmation: boolean; enabled: boolean }[]
   rails: { input_enabled: boolean; output_enabled: boolean; scope_description: string | null }
 }
 
@@ -82,17 +82,21 @@ export interface ColumnDef {
   required: boolean
 }
 
+export type IdType = 'uuid' | 'auto_increment'
+
 export interface TableDef {
   table_name: string
   display_name: string
   columns: ColumnDef[]
+  id_type: IdType
   tool_linked: string | null
 }
 
 // A row's shape is whatever its TableDef's columns say — "id" plus one
 // key per column. Not statically typed per-table since tables are
-// owner-defined at runtime, not known at build time.
-export type EntityRow = Record<string, unknown> & { id: string }
+// owner-defined at runtime, not known at build time. `id` is a number for
+// an auto_increment table, a uuid string otherwise.
+export type EntityRow = Record<string, unknown> & { id: string | number }
 
 export interface AuditLogEntry {
   id: number
@@ -148,6 +152,30 @@ export const api = {
   deleteTable: (token: string, businessId: string, tableName: string, confirmToken?: string) =>
     request<ConfirmationRequired | DeleteResult>(
       `/admin/api/v1/businesses/${businessId}/tables/${encodeURIComponent(tableName)}`,
+      { method: 'DELETE', token, params: confirmToken ? { confirm_token: confirmToken } : undefined },
+    ),
+
+  addColumn: (token: string, businessId: string, tableName: string, column: ColumnDef) =>
+    request<TableDef>(
+      `/admin/api/v1/businesses/${businessId}/tables/${encodeURIComponent(tableName)}/columns`,
+      { method: 'POST', token, body: column },
+    ),
+
+  renameColumn: (token: string, businessId: string, tableName: string, columnName: string, newName: string) =>
+    request<TableDef>(
+      `/admin/api/v1/businesses/${businessId}/tables/${encodeURIComponent(tableName)}/columns/${encodeURIComponent(columnName)}`,
+      { method: 'PATCH', token, body: { name: newName } },
+    ),
+
+  deleteColumn: (
+    token: string,
+    businessId: string,
+    tableName: string,
+    columnName: string,
+    confirmToken?: string,
+  ) =>
+    request<ConfirmationRequired | DeleteResult>(
+      `/admin/api/v1/businesses/${businessId}/tables/${encodeURIComponent(tableName)}/columns/${encodeURIComponent(columnName)}`,
       { method: 'DELETE', token, params: confirmToken ? { confirm_token: confirmToken } : undefined },
     ),
 

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/auth'
-import { api, ApiError, type ColumnType, type TableDef } from '@/lib/api'
+import { api, ApiError, type ColumnType, type IdType, type TableDef } from '@/lib/api'
 
 // Mirrors SignupPage's slugify — the backend requires the same identifier
 // shape for a table_name as it does a business_id (business_config/
@@ -41,6 +41,7 @@ export function TableBuilderDialog({ open, onOpenChange, onCreated }: TableBuild
   const [displayName, setDisplayName] = useState('')
   const [tableName, setTableName] = useState('')
   const [tableNameEdited, setTableNameEdited] = useState(false)
+  const [idType, setIdType] = useState<IdType>('uuid')
   const [columns, setColumns] = useState<DraftColumn[]>([{ ...EMPTY_COLUMN }])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -49,6 +50,7 @@ export function TableBuilderDialog({ open, onOpenChange, onCreated }: TableBuild
     setDisplayName('')
     setTableName('')
     setTableNameEdited(false)
+    setIdType('uuid')
     setColumns([{ ...EMPTY_COLUMN }])
     setError(null)
   }
@@ -69,6 +71,7 @@ export function TableBuilderDialog({ open, onOpenChange, onCreated }: TableBuild
       table_name: tableName,
       display_name: displayName,
       tool_linked: null,
+      id_type: idType,
       columns: columns.filter((c) => c.name.trim() !== ''),
     }
     try {
@@ -124,6 +127,18 @@ export function TableBuilderDialog({ open, onOpenChange, onCreated }: TableBuild
               title="Lowercase letters, digits, and underscores only"
               required
             />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="table-id-type">Id type</Label>
+            <Select value={idType} onValueChange={(value) => setIdType(value as IdType)}>
+              <SelectTrigger id="table-id-type" size="sm" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="uuid">UUID (default)</SelectItem>
+                <SelectItem value="auto_increment">Auto-increment number</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex flex-col gap-2">
