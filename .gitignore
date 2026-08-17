@@ -11,7 +11,15 @@ node_modules
 dist
 dist-ssr
 *.local
-.env
+
+# Env files: deny every `.env*` except the checked-in template. No real env
+# file is committed — per-mode defaults live in src/lib/api.ts instead, so a
+# fresh clone and CI build correctly without one.
+#
+# Do not re-include anything else here. `.env.example` is safe because it holds
+# only placeholder values; any file with a real value stays local.
+.env*
+!.env.example
 
 # Editor directories and files
 .vscode/*
