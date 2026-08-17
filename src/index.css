@@ -3,6 +3,14 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 
+/* The app is light-only — it shares the marketing page's palette, and that page
+   is light by design. Keeping this variant (rather than deleting it) is what
+   makes that stick: `dark:` utilities are all over the vendored shadcn
+   components, and with the variant removed Tailwind falls back to its built-in
+   `@media (prefers-color-scheme: dark)` meaning, which would flip the app dark
+   for anyone whose OS is. Pointed at a `.dark` ancestor that nothing ever sets,
+   every one of those utilities is inert. Do not remove it without also
+   stripping `dark:` from every component. */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -48,73 +56,71 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ------------------------------------------------------------------ Palette
+ *
+ * These are the marketing page's colours, not shadcn's defaults, so the admin
+ * app and qantonic.arkaiver.com read as one product. LandingPage.tsx writes the
+ * same values as literal hex (it is deliberately token-free — see the note at
+ * the top of that file), so the two lists have to be changed together:
+ *
+ *   page          #FAFAF9   --background
+ *   cards / alt   #FFFFFF   --card, --popover, --sidebar
+ *   text          #18181B   --foreground
+ *   muted text    #71717A   --muted-foreground
+ *   hairline      #E4E4E7   --border, --input
+ *   hover surface #F4F4F5   --muted, --secondary, --accent
+ *   accent        #4F46E5   --primary, --ring
+ *
+ * Written as hex rather than oklch for exactly one reason: so a search for
+ * `#4F46E5` finds both files. Do not "normalise" these back to oklch.
+ *
+ * Two names in here mean the opposite of what they look like. shadcn's
+ * `--accent` is the neutral hover/highlight surface, *not* the brand accent —
+ * that is `--primary`. And `--primary` was near-black before this; it is now
+ * indigo, which is why buttons across the app changed colour rather than just
+ * their background.
+ */
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
-}
+    /* Light-only app: tell the UA too, so native controls, scrollbars and
+       form widgets don't render dark under an OS dark preference. */
+    color-scheme: light;
 
-.dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    --background: #FAFAF9;
+    --foreground: #18181B;
+    --card: #FFFFFF;
+    --card-foreground: #18181B;
+    --popover: #FFFFFF;
+    --popover-foreground: #18181B;
+    --primary: #4F46E5;
+    --primary-foreground: #FFFFFF;
+    --secondary: #F4F4F5;
+    --secondary-foreground: #18181B;
+    --muted: #F4F4F5;
+    --muted-foreground: #71717A;
+    --accent: #F4F4F5;
+    --accent-foreground: #18181B;
+    --destructive: #DC2626;
+    --border: #E4E4E7;
+    --input: #E4E4E7;
+    --ring: #4F46E5;
+    /* Unused today. Indigo-led so the first chart anyone adds is on-brand
+       rather than the greyscale ramp shadcn ships. */
+    --chart-1: #4F46E5;
+    --chart-2: #818CF8;
+    --chart-3: #A5B4FC;
+    --chart-4: #71717A;
+    --chart-5: #D4D4D8;
+    --radius: 0.625rem;
+    /* White against the #FAFAF9 content area, the way the landing page's
+       footer and cards sit against its page background. */
+    --sidebar: #FFFFFF;
+    --sidebar-foreground: #18181B;
+    --sidebar-primary: #4F46E5;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #F4F4F5;
+    --sidebar-accent-foreground: #18181B;
+    --sidebar-border: #E4E4E7;
+    --sidebar-ring: #4F46E5;
 }
 
 @layer base {
@@ -127,4 +133,47 @@
   html {
     @apply font-sans;
     }
+}
+
+/* ---------------------------------------------------------- Landing page */
+/* Only two things on the marketing page need real CSS rather than utility
+   classes: a keyframe, and a mask that has to change at a breakpoint (an
+   inline style cannot carry a media query). Everything else on that page
+   stays inline so the admin app's dark-mode class can never reach it. */
+
+/* Chat bubbles mount one at a time as the thread plays; each animates once
+   on mount. */
+@keyframes qtc-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.qtc-bubble-in {
+  animation: qtc-bubble-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Mobile use-case slides show the image fading out before the copy starts.
+   On desktop the copy sits over the image instead, so the mask is dropped. */
+.qtc-slide-fade {
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+}
+
+@media (min-width: 1024px) {
+  .qtc-slide-fade {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qtc-bubble-in {
+    animation: none;
+  }
 }
